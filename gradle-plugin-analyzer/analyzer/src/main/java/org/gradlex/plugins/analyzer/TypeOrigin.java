@@ -140,6 +140,10 @@ public enum TypeOrigin {
         return of(clazz) == EXTERNAL;
     }
 
+    public static boolean any(@SuppressWarnings("unused") IClass type) {
+        return true;
+    }
+
     private interface PackageMatcher {
         boolean match(Atom pkg);
     }

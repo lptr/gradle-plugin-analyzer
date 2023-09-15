@@ -2,8 +2,10 @@ package org.gradlex.plugins.analyzer
 
 import com.ibm.wala.classLoader.IClass
 import org.gradlex.plugins.analyzer.analysis.AbstractAnalysisSpec
+import org.gradlex.plugins.analyzer.analysis.FindTypeReferences
 import org.gradlex.plugins.analyzer.analysis.ShouldNotReferenceInternalApi
 import org.gradlex.plugins.analyzer.analysis.TypeShouldExtendType
+import org.gradlex.plugins.analyzer.analysis.TypeShouldNotOverrideGetter
 import org.gradlex.plugins.analyzer.analysis.TypeShouldNotOverrideSetter
 
 import java.nio.file.FileSystem
@@ -13,6 +15,7 @@ import java.util.regex.Pattern
 import java.util.stream.Stream
 
 import static org.gradlex.plugins.analyzer.TypeRepository.TypeSet.ALL_EXTERNAL_REFERENCED_TYPES
+import static org.gradlex.plugins.analyzer.TypeRepository.TypeSet.EXTERNAL_TASK_TYPES
 import static org.slf4j.event.Level.INFO
 
 class DefaultAnalyzerTest extends AbstractAnalysisSpec {
@@ -37,6 +40,11 @@ class DefaultAnalyzerTest extends AbstractAnalysisSpec {
         analyze(ALL_EXTERNAL_REFERENCED_TYPES, new TypeShouldExtendType("Lorg/gradle/api/DefaultTask"))
     }
 
+    def "can show types that override getters"() {
+        expect:
+        analyze(ALL_EXTERNAL_REFERENCED_TYPES, new TypeShouldNotOverrideGetter())
+    }
+
     def "can show types that override setters"() {
         expect:
         analyze(ALL_EXTERNAL_REFERENCED_TYPES, new TypeShouldNotOverrideSetter())
@@ -45,6 +53,16 @@ class DefaultAnalyzerTest extends AbstractAnalysisSpec {
     def "can show references to internal Gradle types"() {
         expect:
         analyze(ALL_EXTERNAL_REFERENCED_TYPES, new ShouldNotReferenceInternalApi())
+    }
+
+    def "can run multiple analyses"() {
+        expect:
+        analyze(EXTERNAL_TASK_TYPES, new TypeShouldExtendType("Lorg/gradle/api/DefaultTask"))
+        analyze(ALL_EXTERNAL_REFERENCED_TYPES, new TypeShouldNotOverrideGetter())
+        analyze(ALL_EXTERNAL_REFERENCED_TYPES, new TypeShouldNotOverrideSetter())
+        analyze(ALL_EXTERNAL_REFERENCED_TYPES, new ShouldNotReferenceInternalApi())
+        analyze(ALL_EXTERNAL_REFERENCED_TYPES, new FindTypeReferences("Lorg/gradle/api/resources/TextResource"))
+
     }
 
     @Override

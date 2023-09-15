@@ -8,6 +8,7 @@ import com.ibm.wala.shrike.shrikeBT.IInstruction;
 import com.ibm.wala.shrike.shrikeCT.InvalidClassFileException;
 import com.ibm.wala.types.TypeName;
 import com.ibm.wala.types.TypeReference;
+import org.gradlex.plugins.analyzer.TypeReferenceWalker.VisitDecision;
 
 import java.util.ArrayDeque;
 import java.util.HashSet;
@@ -76,23 +77,14 @@ public class WalaUtil {
             type.getDirectInterfaces().stream());
     }
 
-    public static void visitImmediateInternalSupertypes(IClass baseType, Consumer<IClass> processor) {
+    public static void visitSupertypes(IClass baseType, Function<IClass, VisitDecision> hierarchyFilter, Consumer<IClass> processor) {
         visitTypeHierarchy(baseType, superType -> {
-            switch (TypeOrigin.of(superType)) {
-                case PUBLIC -> {
-                    // Ignore referenced public types and their supertypes
-                    return false;
-                }
-                case INTERNAL -> {
-                    // Report referenced internal type
-                    processor.accept(superType);
-                    return false;
-                }
-                default -> {
-                    // Visit external supertype
-                    return true;
-                }
+            VisitDecision decision = hierarchyFilter.apply(superType);
+            if (decision == VisitDecision.STOP_DONT_VISIT) {
+                return false;
             }
+            processor.accept(superType);
+            return decision == VisitDecision.VISIT_AND_CONTINUE;
         });
     }
 

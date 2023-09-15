@@ -34,8 +34,8 @@ class ShouldNotReferenceInternalApiTest extends AbstractAnalysisSpec {
 
         then:
         reports == [
-            "WARN: The method CustomTask.hasTaskActions()Z overrides internal Gradle method org.gradle.api.internal.AbstractTask.hasTaskActions()Z",
-            "WARN: The type LCustomTask extends internal Gradle type Lorg/gradle/jvm/toolchain/internal/task/ShowToolchainsTask",
+            "WARN: The method CustomTask.hasTaskActions()Z overrides method org.gradle.api.internal.AbstractTask.hasTaskActions()Z",
+            "WARN: The type LCustomTask extends type Lorg/gradle/jvm/toolchain/internal/task/ShowToolchainsTask",
         ]
     }
 
@@ -63,10 +63,10 @@ class ShouldNotReferenceInternalApiTest extends AbstractAnalysisSpec {
 
         then:
         reports == [
-            "WARN: The method CustomTask.<clinit>()V references internal Gradle type Lorg/gradle/api/internal/TaskOutputsInternal",
-            "WARN: The method CustomTask.<init>()V references internal Gradle method org.gradle.api.internal.TaskOutputsInternal.getUpToDateSpec()Lorg/gradle/api/specs/AndSpec;",
-            "WARN: The method CustomTask.execute()V references internal Gradle method org.gradle.api.internal.TaskOutputsInternal.getUpToDateSpec()Lorg/gradle/api/specs/AndSpec;",
-            "WARN: The method CustomTask.execute()V references internal Gradle type Lorg/gradle/api/internal/TaskOutputsInternal",
+            "WARN: The method CustomTask.<clinit>()V references type Lorg/gradle/api/internal/TaskOutputsInternal",
+            "WARN: The method CustomTask.<init>()V references method org.gradle.api.internal.TaskOutputsInternal.getUpToDateSpec()Lorg/gradle/api/specs/AndSpec;",
+            "WARN: The method CustomTask.execute()V references method org.gradle.api.internal.TaskOutputsInternal.getUpToDateSpec()Lorg/gradle/api/specs/AndSpec;",
+            "WARN: The method CustomTask.execute()V references type Lorg/gradle/api/internal/TaskOutputsInternal",
         ]
     }
 
@@ -88,7 +88,7 @@ class ShouldNotReferenceInternalApiTest extends AbstractAnalysisSpec {
 
         then:
         reports == [
-            "WARN: The method CustomTask.<init>()V references internal Gradle method org.gradle.api.internal.TaskOutputsInternal.getUpToDateSpec()Lorg/gradle/api/specs/AndSpec;"
+            "WARN: The method CustomTask.<init>()V references method org.gradle.api.internal.TaskOutputsInternal.getUpToDateSpec()Lorg/gradle/api/specs/AndSpec;"
         ]
     }
 
@@ -108,10 +108,10 @@ class ShouldNotReferenceInternalApiTest extends AbstractAnalysisSpec {
 
         then:
         reports == [
-            "WARN: The declaration of method CustomTask.<init>(Lorg/gradle/api/internal/BuildType;)V references internal Gradle type Lorg/gradle/api/internal/BuildType",
-            "WARN: The declaration of method CustomTask.internalApis(Lorg/gradle/api/internal/TaskInputsInternal;)Lorg/gradle/api/internal/TaskOutputsInternal; references internal Gradle type Lorg/gradle/api/internal/TaskInputsInternal",
-            "WARN: The declaration of method CustomTask.internalApis(Lorg/gradle/api/internal/TaskInputsInternal;)Lorg/gradle/api/internal/TaskOutputsInternal; references internal Gradle type Lorg/gradle/api/internal/TaskOutputsInternal",
-            "WARN: The declaration of method CustomTask.internalApis(Lorg/gradle/api/internal/TaskInputsInternal;)Lorg/gradle/api/internal/TaskOutputsInternal; references internal Gradle type Lorg/gradle/internal/exceptions/DefaultMultiCauseException",
+            "WARN: The declaration of method CustomTask.<init>(Lorg/gradle/api/internal/BuildType;)V references type Lorg/gradle/api/internal/BuildType",
+            "WARN: The declaration of method CustomTask.internalApis(Lorg/gradle/api/internal/TaskInputsInternal;)Lorg/gradle/api/internal/TaskOutputsInternal; references type Lorg/gradle/api/internal/TaskInputsInternal",
+            "WARN: The declaration of method CustomTask.internalApis(Lorg/gradle/api/internal/TaskInputsInternal;)Lorg/gradle/api/internal/TaskOutputsInternal; references type Lorg/gradle/api/internal/TaskOutputsInternal",
+            "WARN: The declaration of method CustomTask.internalApis(Lorg/gradle/api/internal/TaskInputsInternal;)Lorg/gradle/api/internal/TaskOutputsInternal; references type Lorg/gradle/internal/exceptions/DefaultMultiCauseException",
         ]
     }
 
@@ -127,7 +127,7 @@ class ShouldNotReferenceInternalApiTest extends AbstractAnalysisSpec {
 
         then:
         reports == [
-            "WARN: The field LCustomTask.buildType references internal Gradle type Lorg/gradle/api/internal/BuildType",
+            "WARN: The field LCustomTask.buildType references type Lorg/gradle/api/internal/BuildType",
         ]
     }
 
@@ -146,9 +146,9 @@ class ShouldNotReferenceInternalApiTest extends AbstractAnalysisSpec {
 
         then:
         reports == [
-            "WARN: Annotation on method CustomTask.doSomething()V references internal Gradle type Lorg/gradle/internal/instrumentation/api/annotations/InterceptInherited",
-            "WARN: Annotation on type LCustomTask references internal Gradle type Lorg/gradle/api/internal/BuildType",
-            "WARN: Annotation on type LCustomTask references internal Gradle type Lorg/gradle/internal/instrumentation/api/annotations/VisitForInstrumentation",
+            "WARN: The declaration of method CustomTask.doSomething()V references type Lorg/gradle/internal/instrumentation/api/annotations/InterceptInherited",
+            "WARN: The type LCustomTask references type Lorg/gradle/api/internal/BuildType",
+            "WARN: The type LCustomTask references type Lorg/gradle/internal/instrumentation/api/annotations/VisitForInstrumentation",
         ]
     }
 }

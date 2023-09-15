@@ -1,8 +1,8 @@
 package org.gradlex.plugins.analyzer
 
-import com.ibm.wala.classLoader.IMethod
-import com.ibm.wala.types.TypeReference
 import org.gradlex.plugins.analyzer.analysis.AbstractAnalysisSpec
+
+import static org.gradlex.plugins.analyzer.TypeReferenceWalker.VisitDecision.VISIT_AND_CONTINUE
 
 class TypeReferenceWalkerTest extends AbstractAnalysisSpec {
     def "annotation references are properly tracked"() {
@@ -29,25 +29,17 @@ class TypeReferenceWalkerTest extends AbstractAnalysisSpec {
         def types = new TreeSet<String>()
         def methods = new TreeSet<String>()
 
-        def visitor = new TypeReferenceWalker.ReferenceVisitor(repository.typeResolver) {
-            @Override
-            void visitReference(TypeReference reference) {
-                types += reference.name.toString()
-            }
-
-            @Override
-            void visitMethodReference(IMethod method) {
-                methods += method.signature
-            }
-        }
-
         def clazz = repository.typeResolver.findClass("LCustomType")
-        TypeReferenceWalker.walkReferences(clazz, TypeReferenceWalker.ReferenceVisitorFactory.alwaysWith(visitor))
+        TypeReferenceWalker.walkReferences(clazz, repository.typeResolver, __ -> VISIT_AND_CONTINUE, reference -> reference.target().map(
+            type -> types += type.name.toString(),
+            method -> methods += method.signature
+        ))
 
         expect:
         types.toList() == [
             "LClassRef",
             "LStringRef",
+            "Ljava/lang/Object",
             "Lorg/gradle/api/internal/TaskOutputsInternal",
         ]
         methods.toList() == []

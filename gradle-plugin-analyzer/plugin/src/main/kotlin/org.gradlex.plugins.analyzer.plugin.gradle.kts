@@ -15,11 +15,12 @@ import org.gradlex.plugins.analyzer.Analysis
 import org.gradlex.plugins.analyzer.Analyzer
 import org.gradlex.plugins.analyzer.DefaultAnalyzer
 import org.gradlex.plugins.analyzer.Reporter
-import org.gradlex.plugins.analyzer.WalaUtil.toFQCN
 import org.gradlex.plugins.analyzer.TypeRepository
 import org.gradlex.plugins.analyzer.TypeRepository.TypeSet
 import org.gradlex.plugins.analyzer.TypeRepository.TypeSet.ALL_EXTERNAL_REFERENCED_TYPES
 import org.gradlex.plugins.analyzer.TypeRepository.TypeSet.EXTERNAL_TASK_TYPES
+import org.gradlex.plugins.analyzer.WalaUtil.toFQCN
+import org.gradlex.plugins.analyzer.analysis.FindTypeReferences
 import org.gradlex.plugins.analyzer.analysis.ShouldNotReferenceInternalApi
 import org.gradlex.plugins.analyzer.analysis.TypeShouldExtendType
 import org.gradlex.plugins.analyzer.analysis.TypeShouldNotOverrideGetter
@@ -56,7 +57,62 @@ abstract class AnalyzedPlugin(val pluginId: String) : Comparable<AnalyzedPlugin>
     override fun compareTo(other: AnalyzedPlugin) = pluginId.compareTo(other.pluginId)
 }
 
+abstract class AnalysisRunner : java.io.Serializable {
+    abstract fun executeAnalysis(context: Context)
+
+    protected fun executeAnalysis(context: Context, title: String, set: TypeSet, analysis: Analysis) {
+        val builder = ImmutableSortedSet.naturalOrder<Message>()
+        context.analyzer.analyze(set, analysis) { level, message, args ->
+            if (level.toInt() >= context.level.toInt()) {
+                builder.add(Message(level.name, message.format(*args)))
+            }
+        }
+        val messages = builder.build()
+        if (!messages.isEmpty()) {
+            context.messageGroups.add(MessageGroup(title, messages.asList()))
+        }
+    }
+
+    data class Context(val analyzer: Analyzer, val level: Level, val messageGroups: MutableList<MessageGroup>)
+}
+
+class TypeShouldExtendTypeRunner(@Input val title: String, @Input val set: TypeSet, @Input val extendedSuperType: String) : AnalysisRunner() {
+    override fun executeAnalysis(context: Context) {
+        executeAnalysis(context, title, set, TypeShouldExtendType(extendedSuperType))
+    }
+}
+
+class TypeShouldNotOverrideGetterRunner(@Input val set: TypeSet) : AnalysisRunner() {
+    override fun executeAnalysis(context: Context) {
+        executeAnalysis(context, "Should not override getter", set, TypeShouldNotOverrideGetter())
+    }
+}
+
+class TypeShouldNotOverrideSetterRunner(@Input val set: TypeSet) : AnalysisRunner() {
+    override fun executeAnalysis(context: Context) {
+        executeAnalysis(context, "Should not override setter", set, TypeShouldNotOverrideSetter())
+    }
+}
+
+class ShouldNotReferenceInternalApiRunner(@Input val set: TypeSet) : AnalysisRunner() {
+    override fun executeAnalysis(context: Context) {
+        executeAnalysis(context, "Should not reference internal Gradle API", set, ShouldNotReferenceInternalApi())
+    }
+}
+
+class FindTypeReferencesRunner(@Input val set: TypeSet, @Input val typeName: String) : AnalysisRunner() {
+    override fun executeAnalysis(context: Context) {
+        executeAnalysis(context, "References ${typeName}", set, FindTypeReferences(typeName))
+    }
+}
+
 open class PluginAnalyzerExtension(objects: ObjectFactory) {
+    val runners = objects.domainObjectSet(AnalysisRunner::class.java)
+
+    fun analyze(runner: AnalysisRunner) {
+        runners.add(runner)
+    }
+
     val analyzedPlugins = objects.domainObjectContainer(AnalyzedPlugin::class.java)
 
     fun plugin(artifact: String, configuration: Action<in AnalyzedPlugin> = Actions.doNothing()) {
@@ -89,6 +145,10 @@ abstract class PluginAnalyzerTask : DefaultTask() {
     @get:Input
     abstract val level: Property<Level>
 
+    // TODO This should be @Nested, but then we get "not serializable" errors...
+    @get:Input
+    abstract val runners: ListProperty<AnalysisRunner>
+
     init {
         level.convention(Level.INFO)
     }
@@ -105,6 +165,8 @@ abstract class PluginAnalyzerTask : DefaultTask() {
             val reportFile: RegularFileProperty
 
             val level: Property<Level>
+
+            val runners: ListProperty<AnalysisRunner>
         }
 
         @OptIn(ExperimentalSerializationApi::class)
@@ -123,23 +185,9 @@ abstract class PluginAnalyzerTask : DefaultTask() {
                 }
             }
 
-            fun Analyzer.analyze(title: String, set: TypeSet, analysis: Analysis) {
-                val builder = ImmutableSortedSet.naturalOrder<Message>()
-                analyze(set, analysis, Reporter { level, message, args ->
-                    if (level.toInt() >= parameters.level.get().toInt()) {
-                        builder.add(Message(level.name, message.format(*args)))
-                    }
-                })
-                val messages = builder.build()
-                if (!messages.isEmpty()) {
-                    messageGroups.add(MessageGroup(title, messages.asList()))
-                }
+            parameters.runners.get().forEach { runner ->
+                runner.executeAnalysis(AnalysisRunner.Context(analyzer, parameters.level.get(), messageGroups))
             }
-
-            analyzer.analyze("Task should extend DefaultTask", EXTERNAL_TASK_TYPES, TypeShouldExtendType("Lorg/gradle/api/DefaultTask"))
-            analyzer.analyze("Should not override setter", ALL_EXTERNAL_REFERENCED_TYPES, TypeShouldNotOverrideSetter())
-            analyzer.analyze("Should not override getter", ALL_EXTERNAL_REFERENCED_TYPES, TypeShouldNotOverrideGetter())
-            analyzer.analyze("Should not reference internal Gradle API", ALL_EXTERNAL_REFERENCED_TYPES, ShouldNotReferenceInternalApi())
 
             val report = parameters.reportFile.get().asFile
             FileOutputStream(report).use { stream ->
@@ -151,7 +199,7 @@ abstract class PluginAnalyzerTask : DefaultTask() {
         private fun formatField(field: IField) = "field `${toFQCN(field.declaringClass)}.${field.name}`"
         private fun formatMethod(method: IMethod): String {
             val paramTypes = mutableListOf<String>()
-            // Ignore 'this"
+            // Ignore 'this` for instance methods
             val firstParam = if (method.isStatic) 0 else 1
             for (iParam in firstParam until method.numberOfParameters) {
                 // Let's use the simple name of parameter types
@@ -175,6 +223,7 @@ abstract class PluginAnalyzerTask : DefaultTask() {
                 runtime = task.runtime
                 reportFile = task.reportFile
                 level = task.level
+                runners = task.runners
             }
 
         workerExecutor.await()
@@ -315,6 +364,7 @@ pluginAnalyzer.analyzedPlugins.all {
     val analyzeTask = tasks.register<PluginAnalyzerTask>("analyze_$simplifiedName") {
         classpath = config
         runtime.from(gradleRuntime)
+        runners = pluginAnalyzer.runners
         reportFile = project.layout.buildDirectory.file("plugin-analysis/plugins/${pluginId}.json")
     }
 

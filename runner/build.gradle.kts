@@ -1,4 +1,13 @@
+import Org_gradlex_plugins_analyzer_plugin_gradle.FindTypeReferencesRunner
+import Org_gradlex_plugins_analyzer_plugin_gradle.ShouldNotReferenceInternalApiRunner
+import Org_gradlex_plugins_analyzer_plugin_gradle.TypeShouldExtendTypeRunner
+import Org_gradlex_plugins_analyzer_plugin_gradle.TypeShouldNotOverrideGetterRunner
+import Org_gradlex_plugins_analyzer_plugin_gradle.TypeShouldNotOverrideSetterRunner
+import org.gradlex.plugins.analyzer.TypeRepository.TypeSet.ALL_EXTERNAL_REFERENCED_TYPES
+import org.gradlex.plugins.analyzer.TypeRepository.TypeSet.EXTERNAL_TASK_TYPES
+
 plugins {
+    base
     id("org.gradlex.plugins.analyzer.plugin")
 }
 
@@ -9,6 +18,12 @@ repositories {
 }
 
 pluginAnalyzer {
+    analyze(TypeShouldExtendTypeRunner("Task should extend DefaultTask", EXTERNAL_TASK_TYPES, "Lorg/gradle/api/DefaultTask"))
+    analyze(TypeShouldNotOverrideGetterRunner(ALL_EXTERNAL_REFERENCED_TYPES))
+    analyze(TypeShouldNotOverrideSetterRunner(ALL_EXTERNAL_REFERENCED_TYPES))
+    analyze(ShouldNotReferenceInternalApiRunner(ALL_EXTERNAL_REFERENCED_TYPES))
+    analyze(FindTypeReferencesRunner(ALL_EXTERNAL_REFERENCED_TYPES, "Lorg/gradle/api/resources/TextResource"))
+
     plugin("com.android.application")
     plugin("com.android.library")
 

@@ -45,7 +45,7 @@ dependencies {
 
     implementation("org.jetbrains.kotlin:kotlin-compiler-embeddable:$kotlinVersion")
 
-    "pluginUnderTest"("com.gradle:gradle-enterprise-gradle-plugin:3.14.1")
+    "pluginUnderTest"("com.adarshr:gradle-test-logger-plugin:3.2.0")
 
     "groovyRuntime"(localGroovy())
     "kotlinRuntime"("org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion")

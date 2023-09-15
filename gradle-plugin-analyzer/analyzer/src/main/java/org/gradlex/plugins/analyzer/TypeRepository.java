@@ -12,8 +12,9 @@ import com.ibm.wala.ipa.cha.ClassHierarchyFactory;
 import com.ibm.wala.types.ClassLoaderReference;
 import com.ibm.wala.types.TypeReference;
 import com.ibm.wala.util.config.FileOfClasses;
-import org.gradlex.plugins.analyzer.TypeReferenceWalker.ReferenceVisitor;
-import org.gradlex.plugins.analyzer.TypeReferenceWalker.ReferenceVisitorFactory;
+import org.gradlex.plugins.analyzer.Reference.MethodTarget;
+import org.gradlex.plugins.analyzer.Reference.Target;
+import org.gradlex.plugins.analyzer.Reference.TypeTarget;
 
 import javax.annotation.Nonnull;
 import java.io.ByteArrayInputStream;
@@ -27,10 +28,13 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.jar.JarFile;
 import java.util.stream.Stream;
 
 import static org.gradlex.plugins.analyzer.TypeOrigin.EXTERNAL;
+import static org.gradlex.plugins.analyzer.TypeReferenceWalker.VisitDecision.STOP_DONT_VISIT;
+import static org.gradlex.plugins.analyzer.TypeReferenceWalker.VisitDecision.VISIT_AND_CONTINUE;
 
 public class TypeRepository {
 
@@ -139,43 +143,56 @@ public class TypeRepository {
                 var queue = new ArrayDeque<>(allExternalTypes);
                 var seenTypes = new HashSet<>(allExternalTypes);
 
-                ReferenceVisitor visitor = new ReferenceVisitor(typeResolver) {
-                    @Override
-                    public void visitReference(TypeReference reference) {
-                        IClass type = typeResolver.findClass(reference);
-                        if (type != null && TypeOrigin.of(type) == EXTERNAL) {
-                            if (seenTypes.add(type)) {
-                                queue.add(type);
-                            }
-                        }
-                    }
-
-                    @Override
-                    public void visitMethodReference(IMethod method) {
-                        IClass type = method.getDeclaringClass();
-                        if (TypeOrigin.of(type) == EXTERNAL) {
-                            visitReference(type);
-                            visitReference(method.getReturnType());
-                            for (int iParam = 0; iParam < method.getNumberOfParameters(); iParam++) {
-                                visitReference(method.getParameterType(iParam));
-                            }
-                        }
-                    }
-                };
-                ReferenceVisitorFactory visitorFactory = ReferenceVisitorFactory.alwaysWith(visitor);
-
                 while (true) {
                     IClass type = queue.poll();
                     if (type == null) {
                         break;
                     }
-                    TypeReferenceWalker.walkReferences(type, visitorFactory);
+                    TypeReferenceWalker.walkReferences(
+                        type,
+                        typeResolver,
+                        superType -> TypeOrigin.isExternal(superType)
+                            ? VISIT_AND_CONTINUE
+                            : STOP_DONT_VISIT,
+                        reference -> {
+                            Target target = reference.target();
+                            if (target instanceof TypeTarget) {
+                                IClass targetType = typeResolver.findClass(((TypeTarget) target).type());
+                                if (targetType != null && TypeOrigin.of(targetType) == EXTERNAL) {
+                                    visitTypeIfNecessary(targetType, seenTypes, queue);
+                                }
+                            } else if (target instanceof MethodTarget) {
+                                IMethod method = ((MethodTarget) target).method();
+                                IClass declaringType = method.getDeclaringClass();
+                                if (TypeOrigin.of(declaringType) == EXTERNAL) {
+                                    visitTypeIfNecessary(declaringType, seenTypes, queue);
+                                    visitTypeIfNecessary(method.getReturnType(), typeResolver, seenTypes, queue);
+                                    for (int iParam = 0; iParam < method.getNumberOfParameters(); iParam++) {
+                                        visitTypeIfNecessary(method.getParameterType(iParam), typeResolver, seenTypes, queue);
+                                    }
+                                }
+                            }
+                        });
                 }
                 return seenTypes.stream();
+            }
+
+            private static void visitTypeIfNecessary(TypeReference reference, TypeResolver typeResolver, Set<IClass> seenTypes, ArrayDeque<IClass> queue) {
+                IClass type = typeResolver.findClass(reference);
+                if (type != null) {
+                    visitTypeIfNecessary(type, seenTypes, queue);
+                }
+            }
+
+            private static void visitTypeIfNecessary(IClass type, Set<IClass> seenTypes, ArrayDeque<IClass> queue) {
+                if (TypeOrigin.isExternal(type) && seenTypes.add(type)) {
+                    queue.add(type);
+                }
             }
         };
 
         abstract Stream<IClass> load(TypeRepository cache, TypeResolver typeResolver);
+
     }
 
     @Override
