@@ -14,7 +14,7 @@ repositories {
 }
 
 val walaVersion = "1.6.2"
-val kotlinVersion = "1.8.22"
+val kotlinVersion = "1.9.20-Beta2"
 
 configurations {
     create("pluginUnderTest")
@@ -24,7 +24,7 @@ configurations {
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(17)
+        languageVersion = JavaLanguageVersion.of(21)
     }
 }
 
