@@ -34,6 +34,10 @@ dependencies {
     implementation("org.slf4j:slf4j-api:2.0.7")
     testRuntimeOnly("org.slf4j:slf4j-simple:2.0.7")
 
+    testImplementation("org.codehaus.groovy:groovy:3.0.19") {
+        because("We need Java 21 support")
+    }
+
     api("com.ibm.wala:com.ibm.wala.core:${walaVersion}")
     implementation("com.ibm.wala:com.ibm.wala.shrike:${walaVersion}")
     implementation("com.ibm.wala:com.ibm.wala.util:${walaVersion}")
