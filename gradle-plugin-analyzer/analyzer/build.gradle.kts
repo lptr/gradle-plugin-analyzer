@@ -14,7 +14,7 @@ repositories {
 }
 
 val walaVersion = "1.6.2"
-val kotlinVersion = "1.8.22"
+val kotlinVersion = "1.9.20-Beta2"
 
 configurations {
     create("pluginUnderTest")
@@ -24,7 +24,7 @@ configurations {
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(17)
+        languageVersion = JavaLanguageVersion.of(21)
     }
 }
 
@@ -33,6 +33,10 @@ dependencies {
 
     implementation("org.slf4j:slf4j-api:2.0.7")
     testRuntimeOnly("org.slf4j:slf4j-simple:2.0.7")
+
+    testImplementation("org.codehaus.groovy:groovy:3.0.19") {
+        because("We need Java 21 support")
+    }
 
     api("com.ibm.wala:com.ibm.wala.core:${walaVersion}")
     implementation("com.ibm.wala:com.ibm.wala.shrike:${walaVersion}")

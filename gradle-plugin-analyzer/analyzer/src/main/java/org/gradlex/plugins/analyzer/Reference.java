@@ -15,29 +15,21 @@ public record Reference(Source source, Target target) {
         default <T> T map(Function<? super IClass, ? extends T> typeHandler,
                           Function<? super IField, ? extends T> fieldHandler,
                           Function<? super IMethod, ? extends T> methodHandler) {
-            if (this instanceof TypeSource) {
-                return typeHandler.apply(((TypeSource) this).type());
-            }
-            if (this instanceof FieldSource) {
-                return fieldHandler.apply(((FieldSource) this).field());
-            }
-            if (this instanceof MethodSource) {
-                return methodHandler.apply(((MethodSource) this).method());
-            }
-            throw new AssertionError();
+            return switch (this) {
+                case TypeSource it -> typeHandler.apply(it.type());
+                case FieldSource it -> fieldHandler.apply(it.field());
+                case MethodSource it -> methodHandler.apply(it.method());
+            };
         }
     }
 
     public sealed interface Target {
         default <T> T map(Function<? super TypeReference, ? extends T> typeHandler,
                           Function<? super IMethod, ? extends T> methodHandler) {
-            if (this instanceof TypeTarget) {
-                return typeHandler.apply(((TypeTarget) this).type());
-            }
-            if (this instanceof MethodTarget) {
-                return methodHandler.apply(((MethodTarget) this).method());
-            }
-            throw new AssertionError();
+            return switch (this) {
+                case TypeTarget it -> typeHandler.apply(it.type());
+                case MethodTarget it -> methodHandler.apply(it.method());
+            };
         }
     }
 
@@ -93,41 +85,18 @@ public record Reference(Source source, Target target) {
     }
 
     public static Message format(Reference reference) {
-        Target refTarget = reference.target();
-        Object target;
-        if (refTarget instanceof TypeTarget) {
-            target = ((TypeTarget) refTarget).type();
-        } else if (refTarget instanceof MethodTarget) {
-            target = ((MethodTarget) refTarget).method();
-        } else {
-            throw new AssertionError();
-        }
+        Object target = switch (reference.target()) {
+            case TypeTarget it -> it.type();
+            case MethodTarget it -> it.method();
+        };
 
-        Source source = reference.source();
-        if (source instanceof TypeDeclarationSource) {
-            return new Message("The %s references %s",
-                ((TypeDeclarationSource) source).type(), target);
-        }
-        if (source instanceof TypeInheritanceSource) {
-            return new Message("The %s extends %s",
-                ((TypeInheritanceSource) source).type(), target);
-        }
-        if (source instanceof FieldDeclarationSource) {
-            return new Message("The %s references %s",
-                ((FieldDeclarationSource) source).field(), target);
-        }
-        if (source instanceof MethodDeclarationSource) {
-            return new Message("The declaration of %s references %s",
-                ((MethodDeclarationSource) source).method(), target);
-        }
-        if (source instanceof MethodInheritanceSource) {
-            return new Message("The %s overrides %s",
-                ((MethodInheritanceSource) source).method(), target);
-        }
-        if (source instanceof MethodBodySource) {
-            return new Message("The %s references %s",
-                ((MethodBodySource) source).method(), target);
-        }
-        throw new AssertionError();
+        return switch (reference.source()) {
+            case TypeDeclarationSource it -> new Message("The %s references %s", it.type(), target);
+            case TypeInheritanceSource it -> new Message("The %s extends %s", it.type(), target);
+            case FieldDeclarationSource it -> new Message("The %s references %s", it.field(), target);
+            case MethodDeclarationSource it -> new Message("The declaration of %s references %s", it.method(), target);
+            case MethodInheritanceSource it -> new Message("The %s overrides %s", it.method(), target);
+            case MethodBodySource it -> new Message("The %s references %s", it.method(), target);
+        };
     }
 }

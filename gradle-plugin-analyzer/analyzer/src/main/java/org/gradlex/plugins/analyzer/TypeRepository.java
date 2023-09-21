@@ -156,19 +156,22 @@ public class TypeRepository {
                             : STOP_DONT_VISIT,
                         reference -> {
                             Target target = reference.target();
-                            if (target instanceof TypeTarget) {
-                                IClass targetType = typeResolver.findClass(((TypeTarget) target).type());
-                                if (targetType != null && TypeOrigin.of(targetType) == EXTERNAL) {
-                                    visitTypeIfNecessary(targetType, seenTypes, queue);
+                            switch (target) {
+                                case TypeTarget it -> {
+                                    IClass targetType = typeResolver.findClass(it.type());
+                                    if (targetType != null && TypeOrigin.of(targetType) == EXTERNAL) {
+                                        visitTypeIfNecessary(targetType, seenTypes, queue);
+                                    }
                                 }
-                            } else if (target instanceof MethodTarget) {
-                                IMethod method = ((MethodTarget) target).method();
-                                IClass declaringType = method.getDeclaringClass();
-                                if (TypeOrigin.of(declaringType) == EXTERNAL) {
-                                    visitTypeIfNecessary(declaringType, seenTypes, queue);
-                                    visitTypeIfNecessary(method.getReturnType(), typeResolver, seenTypes, queue);
-                                    for (int iParam = 0; iParam < method.getNumberOfParameters(); iParam++) {
-                                        visitTypeIfNecessary(method.getParameterType(iParam), typeResolver, seenTypes, queue);
+                                case MethodTarget it -> {
+                                    IMethod targetMethod = it.method();
+                                    IClass declaringType = targetMethod.getDeclaringClass();
+                                    if (TypeOrigin.of(declaringType) == EXTERNAL) {
+                                        visitTypeIfNecessary(declaringType, seenTypes, queue);
+                                        visitTypeIfNecessary(targetMethod.getReturnType(), typeResolver, seenTypes, queue);
+                                        for (int iParam = 0; iParam < targetMethod.getNumberOfParameters(); iParam++) {
+                                            visitTypeIfNecessary(targetMethod.getParameterType(iParam), typeResolver, seenTypes, queue);
+                                        }
                                     }
                                 }
                             }
